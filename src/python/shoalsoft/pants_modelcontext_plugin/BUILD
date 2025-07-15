@@ -19,7 +19,7 @@ python_sources(
     **parametrize(
         "pants-2.27",
         resolve="pants-2.27",
-    ), 
+    ),
 )
 
 
