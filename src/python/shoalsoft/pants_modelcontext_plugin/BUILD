@@ -10,9 +10,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+PLUGIN_VERSION = "0.1.0.dev0"
+
 PANTS_MAJOR_MINOR_VERSIONS = ["2.27"]
 
-python_sources()
+python_sources(
+    sources=["*.py", "!*_test.py", "!*_integration_test.py"],
+    **parametrize(
+        "pants-2.27",
+        resolve="pants-2.27",
+    ), 
+)
+
 
 python_tests(
     name="integration_tests",
@@ -41,10 +50,11 @@ pex_binary(
     ),
 )
 
+
 def declare_pex_artifact(pants_major_minor_version):
     pex_binary(
         name=f"pex-{pants_major_minor_version}",
-        output_path=f"shoalsoft-pants-opentelemetry-plugin-pants{pants_major_minor_version}-v{PLUGIN_VERSION}.pex",
+        output_path=f"shoalsoft-pants-modelcontext-plugin-pants{pants_major_minor_version}-v{PLUGIN_VERSION}.pex",
         interpreter_constraints=(f"==3.11.*",),
         dependencies=[
             f"./register.py@parametrize=pants-{pants_major_minor_version}",
