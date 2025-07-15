@@ -18,14 +18,11 @@ import logging
 import os
 import sys
 
-from mcp import types as mcp_types
-from mcp.server.lowlevel import Server
-from mcp.server.stdio import stdio_server
-
 from pants.base.exiter import ExitCode
 from pants.engine.rules import collect_rules
 from pants.goal.auxiliary_goal import AuxiliaryGoal, AuxiliaryGoalContext
 from pants.option.option_types import BoolOption
+from shoalsoft.pants_modelcontext_plugin.mcp_server import setup_and_run_mcp_server
 
 logger = logging.getLogger(__name__)
 
@@ -42,23 +39,13 @@ class McpGoal(AuxiliaryGoal):
         help="Internal option used to invoke the MCP server. DO NOT USE DIRECTLY!",
     )
 
-    async def _setup_and_serve(self) -> None:
-        server: Server = Server("shoalsoft-pants-modelcontext-plugin")
-
-        @server.list_tools()
-        async def list_tools() -> list[mcp_types.Tool]:
-            return []
-
-        async with stdio_server() as (read_stream, write_stream):
-            await server.run(read_stream, write_stream, server.create_initialization_options())
-
     def _run_server(self) -> ExitCode:
         saved_stdout = sys.stdout
         saved_stdin = sys.stdin
         try:
             sys.stdout = io.TextIOWrapper(os.fdopen(sys.stdout.fileno(), "wb", buffering=0))
             sys.stdin = io.TextIOWrapper(os.fdopen(sys.stdin.fileno(), "rb", buffering=0))
-            asyncio.run(self._setup_and_serve())
+            asyncio.run(setup_and_run_mcp_server())
         finally:
             sys.stdout = saved_stdout
             sys.stdin = saved_stdin
