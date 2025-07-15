@@ -1,0 +1,11 @@
+/.pants.d
+/.pids
+
+/dist
+
+/.pytest*
+
+*.code*
+/.vscode
+
+/.claude

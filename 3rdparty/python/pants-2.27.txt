@@ -1,0 +1,5 @@
+pantsbuild.pants==2.27.0
+pantsbuild.pants.testutil==2.27.0
+
+# Test dependencies
+pytest>=6.2.4,<7.1.0
