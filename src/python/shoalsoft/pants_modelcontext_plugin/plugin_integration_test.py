@@ -14,7 +14,7 @@ import os
 import subprocess
 import tempfile
 import textwrap
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -24,9 +24,46 @@ from packaging.version import Version
 from pants.testutil.python_interpreter_selection import python_interpreter_path
 from pants.util.dirutil import safe_file_dump
 from shoalsoft.pants_modelcontext_plugin.pants_integration_testutil import (
+    PantsJoinHandle,
     PantsResult,
     run_pants_with_workdir,
+    run_pants_with_workdir_without_waiting,
 )
+
+
+class IsolatedPantsTestContext:
+    def __init__(
+        self,
+        *,
+        buildroot: Path,
+        workdir_base: Path,
+        pants_exe_args: Iterable[str],
+        extra_env: Mapping[str, str],
+    ):
+        self.buildroot = buildroot
+        self.workdir_base = workdir_base
+        self.pants_exe_args = list(pants_exe_args)
+        self.extra_env = extra_env
+
+    def run_pants(self, args: Iterable[str]) -> PantsResult:
+        with tempfile.TemporaryDirectory(dir=self.workdir_base) as workdir:
+            return run_pants_with_workdir(
+                command=list(args),
+                pants_exe_args=self.pants_exe_args,
+                cwd=self.buildroot,
+                workdir=workdir,
+                extra_env=self.extra_env,
+            )
+
+    def run_pants_without_waiting(self, args: Iterable[str]) -> PantsJoinHandle:
+        with tempfile.TemporaryDirectory(dir=self.workdir_base) as workdir:
+            return run_pants_with_workdir_without_waiting(
+                command=list(args),
+                pants_exe_args=self.pants_exe_args,
+                cwd=self.buildroot,
+                workdir=workdir,
+                extra_env=self.extra_env,
+            )
 
 
 @contextmanager
@@ -106,25 +143,19 @@ def isolated_pants(pants_version_str: str):
         ),
     )
 
-    def run_pants_helper(args: Iterable[str]) -> PantsResult:
-        with tempfile.TemporaryDirectory(dir=workdir_base) as workdir:
-            return run_pants_with_workdir(
-                command=list(args),
-                pants_exe_args=pants_exe_args,
-                cwd=buildroot,
-                workdir=workdir,
-                extra_env=extra_env,
-            )
+    isolated_pants_test_context = IsolatedPantsTestContext(
+        buildroot=buildroot,
+        workdir_base=workdir_base,
+        pants_exe_args=pants_exe_args,
+        extra_env=extra_env,
+    )
 
-    try:
-        yield buildroot, run_pants_helper
-    finally:
-        pass
+    yield isolated_pants_test_context
 
 
 @pytest.mark.parametrize("pants_version_str", ["2.27.0"])
 def test_mcp_server_startup(pants_version_str: str) -> None:
-    with isolated_pants(pants_version_str) as (_buildroot, run_pants):
-        result = run_pants(["help", "goals"])
-        result.assert_success()
-        assert "shoalsoft-mcp" in result.stdout, "The `shoalsoft-mcp` was not configured."
+    with isolated_pants(pants_version_str) as context:
+        result1 = context.run_pants(["help", "goals"])
+        result1.assert_success()
+        assert "shoalsoft-mcp" in result1.stdout, "The `shoalsoft-mcp` goal was not configured."
