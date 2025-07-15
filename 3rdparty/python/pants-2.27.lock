@@ -16,6 +16,7 @@
 //     "pantsbuild.pants==2.27.0",
 //     "pytest<7.1.0,>=6.2.4",
 //     "starlette",
+//     "toml==0.10.2",
 //     "uvicorn"
 //   ],
 //   "manylinux": "manylinux2014",
@@ -1927,6 +1928,7 @@
     "pantsbuild.pants==2.27.0",
     "pytest<7.1.0,>=6.2.4",
     "starlette",
+    "toml==0.10.2",
     "uvicorn"
   ],
   "requires_python": [
