@@ -10,6 +10,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import asyncio
 import os
 import subprocess
 import tempfile
@@ -17,8 +18,11 @@ import textwrap
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Generator
 
 import pytest
+from mcp import ClientSession
+from mcp.client.stdio import StdioServerParameters, stdio_client
 from packaging.version import Version
 
 from pants.testutil.python_interpreter_selection import python_interpreter_path
@@ -26,6 +30,8 @@ from pants.util.dirutil import safe_file_dump
 from shoalsoft.pants_modelcontext_plugin.pants_integration_testutil import (
     PantsJoinHandle,
     PantsResult,
+    PreparedPantsInvocation,
+    prepare_pants_invocation,
     run_pants_with_workdir,
     run_pants_with_workdir_without_waiting,
 )
@@ -45,6 +51,19 @@ class IsolatedPantsTestContext:
         self.pants_exe_args = list(pants_exe_args)
         self.extra_env = extra_env
 
+    @contextmanager
+    def prepared_pants_invocation(
+        self, args: Iterable[str]
+    ) -> Generator[PreparedPantsInvocation, None, None]:
+        with tempfile.TemporaryDirectory(dir=self.workdir_base) as workdir:
+            yield prepare_pants_invocation(
+                command=list(args),
+                pants_exe_args=self.pants_exe_args,
+                cwd=self.buildroot,
+                workdir=workdir,
+                extra_env=self.extra_env,
+            )
+
     def run_pants(self, args: Iterable[str]) -> PantsResult:
         with tempfile.TemporaryDirectory(dir=self.workdir_base) as workdir:
             return run_pants_with_workdir(
@@ -55,9 +74,12 @@ class IsolatedPantsTestContext:
                 extra_env=self.extra_env,
             )
 
-    def run_pants_without_waiting(self, args: Iterable[str]) -> PantsJoinHandle:
+    @contextmanager
+    def run_pants_without_waiting(
+        self, args: Iterable[str]
+    ) -> Generator[PantsJoinHandle, None, None]:
         with tempfile.TemporaryDirectory(dir=self.workdir_base) as workdir:
-            return run_pants_with_workdir_without_waiting(
+            yield run_pants_with_workdir_without_waiting(
                 command=list(args),
                 pants_exe_args=self.pants_exe_args,
                 cwd=self.buildroot,
@@ -159,3 +181,23 @@ def test_mcp_server_startup(pants_version_str: str) -> None:
         result1 = context.run_pants(["help", "goals"])
         result1.assert_success()
         assert "shoalsoft-mcp" in result1.stdout, "The `shoalsoft-mcp` goal was not configured."
+
+        with context.prepared_pants_invocation(
+            ["shoalsoft-mcp", "--run-stdio-server"]
+        ) as invocation:
+
+            async def _run_client_test() -> None:
+                server_params = StdioServerParameters(
+                    command=invocation.pants_command[0],
+                    args=invocation.pants_command[1:],
+                    env={str(key): str(value) for key, value in invocation.env.items()},
+                    cwd=invocation.cwd,
+                )
+                async with stdio_client(server_params) as (reader, writer):
+                    async with ClientSession(reader, writer) as session:
+                        await session.initialize()
+
+                        tools = await session.list_tools()
+                        assert len(tools.tools) == 0
+
+            asyncio.run(_run_client_test())

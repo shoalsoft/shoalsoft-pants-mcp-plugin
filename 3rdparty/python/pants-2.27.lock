@@ -9,6 +9,7 @@
 //     "CPython==3.11.*"
 //   ],
 //   "generated_with_requirements": [
+//     "anyio",
 //     "mcp[cli]==1.11.0",
 //     "packaging",
 //     "pantsbuild.pants.testutil==2.27.0",
@@ -1918,6 +1919,7 @@
   "pip_version": "25.1.1",
   "prefer_older_binary": false,
   "requirements": [
+    "anyio",
     "mcp[cli]==1.11.0",
     "packaging",
     "pantsbuild.pants.testutil==2.27.0",

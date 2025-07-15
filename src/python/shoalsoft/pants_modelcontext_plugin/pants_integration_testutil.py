@@ -135,7 +135,16 @@ class PantsJoinHandle:
         )
 
 
-def run_pants_with_workdir_without_waiting(
+@dataclass
+class PreparedPantsInvocation:
+    pants_command: list[str]
+    env: Mapping[str | bytes, str | bytes]
+    shell: bool
+    cwd: str
+    workdir: str
+
+
+def prepare_pants_invocation(
     command: Command,
     *,
     pants_exe_args: Iterable[str],
@@ -146,7 +155,7 @@ def run_pants_with_workdir_without_waiting(
     shell: bool = False,
     set_pants_ignore: bool = True,
     cwd: str | bytes | os.PathLike | None = None,
-) -> PantsJoinHandle:
+) -> PreparedPantsInvocation:
     args = [
         "--no-pantsrc",
         f"--pants-workdir={workdir}",
@@ -227,21 +236,53 @@ def run_pants_with_workdir_without_waiting(
     print(f"pants_command={pants_command}")
     print(f"env={env}")
 
+    return PreparedPantsInvocation(
+        pants_command=list(pants_command),
+        env=env,
+        shell=shell,
+        cwd=str(cwd),
+        workdir=workdir,
+    )
+
+
+def run_pants_with_workdir_without_waiting(
+    command: Command,
+    *,
+    pants_exe_args: Iterable[str],
+    workdir: str,
+    use_pantsd: bool = True,
+    config: Mapping | None = None,
+    extra_env: Env | None = None,
+    shell: bool = False,
+    set_pants_ignore: bool = True,
+    cwd: str | bytes | os.PathLike | None = None,
+) -> PantsJoinHandle:
+    invocation = prepare_pants_invocation(
+        command=command,
+        pants_exe_args=pants_exe_args,
+        workdir=workdir,
+        use_pantsd=use_pantsd,
+        config=config,
+        extra_env=extra_env,
+        shell=shell,
+        set_pants_ignore=set_pants_ignore,
+        cwd=cwd,
+    )
     return PantsJoinHandle(
-        command=pants_command,
+        command=invocation.pants_command,
         process=subprocess.Popen(
-            pants_command,
+            invocation.pants_command,
             # The type stub for the env argument is unnecessarily restrictive: it requires
             # all keys to be str or all to be bytes. But in practice Popen supports a mix,
             # which is what we pass. So we silence the typechecking error.
-            env=env,  # type: ignore
+            env=invocation.env,  # type: ignore
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            shell=shell,
-            cwd=cwd,
+            shell=invocation.shell,
+            cwd=invocation.cwd,
         ),
-        workdir=workdir,
+        workdir=invocation.workdir,
     )
 
 
