@@ -198,6 +198,6 @@ def test_mcp_server_startup(pants_version_str: str) -> None:
                         await session.initialize()
 
                         tools = await session.list_tools()
-                        assert len(tools.tools) == 0
+                        assert len(tools.tools) == 1
 
             asyncio.run(_run_client_test())
