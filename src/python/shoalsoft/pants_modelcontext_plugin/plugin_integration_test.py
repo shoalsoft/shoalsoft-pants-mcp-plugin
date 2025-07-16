@@ -23,6 +23,7 @@ from typing import Generator
 import pytest
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
+from mcp.types import TextContent
 from packaging.version import Version
 
 from pants.testutil.python_interpreter_selection import python_interpreter_path
@@ -35,6 +36,11 @@ from shoalsoft.pants_modelcontext_plugin.pants_integration_testutil import (
     run_pants_with_workdir,
     run_pants_with_workdir_without_waiting,
 )
+
+
+def _safe_write_files(base_path: str | os.PathLike, files: Mapping[str, str | bytes]) -> None:
+    for name, content in files.items():
+        safe_file_dump(os.path.join(base_path, name), content, makedirs=True)
 
 
 class IsolatedPantsTestContext:
@@ -145,7 +151,11 @@ def isolated_pants(pants_version_str: str):
         [GLOBAL]
         pants_version = "{pants_version}"
         pythonpath = ["{site_packages_path}"]
-        backend_packages = ["pants.backend.python", "shoalsoft.pants_modelcontext_plugin"]
+        backend_packages = [
+          "pants.backend.python",
+          "pants.backend.shell",
+          "shoalsoft.pants_modelcontext_plugin",
+        ]
         print_stacktrace = true
         pantsd = false
 
@@ -176,8 +186,13 @@ def isolated_pants(pants_version_str: str):
 
 
 @pytest.mark.parametrize("pants_version_str", ["2.27.0"])
-def test_mcp_server_startup(pants_version_str: str) -> None:
+def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
+        sources = {
+            "BUILD": """test_shell_command(name="test_tgt", command="echo xyzzy")\n""",
+        }
+        _safe_write_files(context.buildroot, sources)
+
         result1 = context.run_pants(["help", "goals"])
         result1.assert_success()
         assert "shoalsoft-mcp" in result1.stdout, "The `shoalsoft-mcp` goal was not configured."
@@ -197,7 +212,26 @@ def test_mcp_server_startup(pants_version_str: str) -> None:
                     async with ClientSession(reader, writer) as session:
                         await session.initialize()
 
-                        tools = await session.list_tools()
-                        assert len(tools.tools) == 1
+                        tools_result = await session.list_tools()
+                        tools_by_name = {tool.name: tool for tool in tools_result.tools}
+
+                        test_tool = tools_by_name.get("pants-run-test-goal")
+                        assert (
+                            test_tool is not None
+                        ), "The `pants-run-test-goal` tool was not in the MCP tools list."
+
+                        try:
+                            test_result = await session.call_tool(
+                                name=test_tool.name,
+                                arguments={"pants_target_address": "//:test_tgt"},
+                            )
+                            contents = test_result.content
+                            assert len(contents) == 1
+                            content = contents[0]
+                            assert isinstance(content, TextContent)
+                            assert "exit code: 0" in content.text
+                        except Exception as e:
+                            print(f"EXCEPTION: {e}")
+                            raise
 
             asyncio.run(_run_client_test())
