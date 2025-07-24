@@ -59,7 +59,7 @@ The MCP server in `goals.py`:
 - Extends `AuxiliaryGoal` to integrate with Pants goal system
 - Uses async/await pattern with `stdio_server` from mcp library
 - Currently implements a minimal server with empty tools list
-- Server name: "shoalsoft-pants-modelcontext-plugin"
+- Server name: "shoalsoft-pants-mcp-plugin"
 
 
 ## Development Workflow

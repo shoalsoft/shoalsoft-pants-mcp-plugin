@@ -54,7 +54,7 @@ pex_binary(
 def declare_pex_artifact(pants_major_minor_version):
     pex_binary(
         name=f"pex-{pants_major_minor_version}",
-        output_path=f"shoalsoft-pants-modelcontext-plugin-pants{pants_major_minor_version}-v{PLUGIN_VERSION}.pex",
+        output_path=f"shoalsoft-pants-mcp-plugin-pants{pants_major_minor_version}-v{PLUGIN_VERSION}.pex",
         interpreter_constraints=(f"==3.11.*",),
         dependencies=[
             f"./register.py@parametrize=pants-{pants_major_minor_version}",
