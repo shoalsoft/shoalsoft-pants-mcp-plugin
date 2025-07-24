@@ -22,14 +22,57 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 
 from pants.base.specs_parser import SpecsParser
+from pants.build_graph.build_configuration import BuildConfiguration
 from pants.core.goals.test import Test
+from pants.core.util_rules.environments import determine_bootstrap_environment
 from pants.engine.console import Console
 from pants.engine.fs import Workspace
+from pants.engine.internals.parser import BuildFileSymbolsInfo
 from pants.engine.internals.scheduler import SchedulerSession
 from pants.engine.internals.selectors import Params
+from pants.engine.target import RegisteredTargetTypes
+from pants.engine.unions import UnionMembership
+from pants.help.help_info_extracter import GoalHelpInfo, HelpInfoExtracter
+from pants.init.engine_initializer import GraphSession
+from pants.option.options import Options
 
 
-async def setup_and_run_mcp_server(session: SchedulerSession, build_root: Path) -> None:
+def extract_goals(
+    *,
+    graph_session: GraphSession,
+    scheduler_session: SchedulerSession,
+    union_membership: UnionMembership,
+    build_config: BuildConfiguration,
+    options: Options,
+) -> dict[str, GoalHelpInfo]:
+    env_name = determine_bootstrap_environment(scheduler_session)
+    build_symbols = scheduler_session.product_request(BuildFileSymbolsInfo, [Params(env_name)])[0]
+    all_help_info = HelpInfoExtracter.get_all_help_info(
+        options,
+        union_membership,
+        graph_session.goal_consumed_subsystem_scopes,
+        RegisteredTargetTypes.create(build_config.target_types),
+        build_symbols,
+        build_config,
+    )
+
+    goal_name_to_goal_info: dict[str, GoalHelpInfo] = {}
+    for goal_info in all_help_info.name_to_goal_info.values():
+        if goal_info.is_implemented:
+            goal_name_to_goal_info[goal_info.name] = goal_info
+
+    return goal_name_to_goal_info
+
+
+async def setup_and_run_mcp_server(
+    *,
+    graph_session: GraphSession,
+    session: SchedulerSession,
+    build_root: Path,
+    union_membership: UnionMembership,
+    build_config: BuildConfiguration,
+    options: Options,
+) -> None:
     server: Server = Server("shoalsoft-pants-modelcontext-plugin")
 
     async def run_test_goal(pants_target_address: str) -> dict[str, Any]:
