@@ -214,10 +214,10 @@ def test_mcp_server_tools(pants_version_str: str) -> None:
                         list_tools_result = await session.list_tools()
                         tools_by_name = {tool.name: tool for tool in list_tools_result.tools}
 
-                        test_tool = tools_by_name.get("pants-run-test-goal")
+                        test_tool = tools_by_name.get("pants-goal-test")
                         assert (
                             test_tool is not None
-                        ), "The `pants-run-test-goal` tool was not in the MCP tools list."
+                        ), "The `pants-goal-test` tool was not in the MCP tools list."
 
                         try:
                             test_tool_result = await session.call_tool(
