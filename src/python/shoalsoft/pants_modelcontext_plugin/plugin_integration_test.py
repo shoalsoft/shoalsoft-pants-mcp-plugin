@@ -18,12 +18,11 @@ import textwrap
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
 import pytest
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
-from mcp.types import TextContent
 from packaging.version import Version
 
 from pants.testutil.python_interpreter_selection import python_interpreter_path
@@ -189,7 +188,7 @@ def isolated_pants(pants_version_str: str):
 def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
         sources = {
-            "BUILD": """test_shell_command(name="test_tgt", command="echo xyzzy")\n""",
+            "BUILD": """test_shell_command(name="test_tgt", command="echo xyzzy ; exit 1")\n""",
         }
         _safe_write_files(context.buildroot, sources)
 
@@ -212,8 +211,8 @@ def test_mcp_server_tools(pants_version_str: str) -> None:
                     async with ClientSession(reader, writer) as session:
                         await session.initialize()
 
-                        tools_result = await session.list_tools()
-                        tools_by_name = {tool.name: tool for tool in tools_result.tools}
+                        list_tools_result = await session.list_tools()
+                        tools_by_name = {tool.name: tool for tool in list_tools_result.tools}
 
                         test_tool = tools_by_name.get("pants-run-test-goal")
                         assert (
@@ -221,16 +220,38 @@ def test_mcp_server_tools(pants_version_str: str) -> None:
                         ), "The `pants-run-test-goal` tool was not in the MCP tools list."
 
                         try:
-                            test_result = await session.call_tool(
+                            test_tool_result = await session.call_tool(
                                 name=test_tool.name,
                                 arguments={"pants_target_address": "//:test_tgt"},
                             )
-                            contents = test_result.content
-                            assert len(contents) == 1
-                            content = contents[0]
-                            assert isinstance(content, TextContent)
-                            assert "exit code: 0" in content.text
+
+                            test_goal_result: dict[str, Any] = getattr(
+                                test_tool_result, "structuredContent", {}
+                            )
+
+                            exit_code = test_goal_result.get("exit_code")
+                            assert (
+                                exit_code is not None
+                            ), "Expected `exit_code` field in structured output"
+                            assert isinstance(exit_code, int), "Expected `exit_code` to be integer."
+                            assert exit_code == 1
+
+                            stdout = test_goal_result.get("stdout")
+                            assert (
+                                stdout is not None
+                            ), "Expected `stdout` field in structured output"
+                            assert isinstance(stdout, str), "Expected `stdout` to be string."
+                            assert stdout == ""
+
+                            stderr = test_goal_result.get("stderr")
+                            assert (
+                                stderr is not None
+                            ), "Expected `stderr` field in structured output"
+                            assert isinstance(stderr, str), "Expected `stderr` to be string."
+                            assert "//:test_tgt failed" in stderr
                         except Exception as e:
+                            # This seems to be necessary with the asyncio since the exception is not
+                            # propagating back to pytest for some reason.
                             print(f"EXCEPTION: {e}")
                             raise
 
