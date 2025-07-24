@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import io
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,7 @@ from pants.engine.goal import Goal
 from pants.engine.internals.parser import BuildFileSymbolsInfo
 from pants.engine.internals.scheduler import SchedulerSession
 from pants.engine.internals.selectors import Params
+from pants.engine.rules import Rule
 from pants.engine.target import RegisteredTargetTypes
 from pants.engine.unions import UnionMembership
 from pants.help.help_info_extracter import GoalHelpInfo, HelpInfoExtracter
@@ -107,22 +108,22 @@ def _setup_tools(goal_name_to_goal_info: dict[str, GoalHelpInfo]) -> list[mcp_ty
     return tools
 
 
-def _setup_goal_map_from_rules(rules) -> Mapping[str, type[Goal]]:
+def _setup_goal_map_from_rules(rules: Iterable[Rule]) -> Mapping[str, type[Goal]]:
     goal_map: dict[str, type[Goal]] = {}
     for rule in rules:
         output_type = getattr(rule, "output_type", None)
         if not output_type or not issubclass(output_type, Goal):
             continue
 
-        goal = rule.output_type.name
-        deprecated_goal = rule.output_type.subsystem_cls.deprecated_options_scope
+        goal = output_type.name
+        deprecated_goal = output_type.subsystem_cls.deprecated_options_scope
         for goal_name in [goal, deprecated_goal] if deprecated_goal else [goal]:
             if goal_name in goal_map:
                 raise Exception(
                     f"could not map goal `{goal_name}` to rule `{rule}`: already claimed by product "
                     f"`{goal_map[goal_name]}`"
                 )
-            goal_map[goal_name] = rule.output_type
+            goal_map[goal_name] = output_type
     return goal_map
 
 
