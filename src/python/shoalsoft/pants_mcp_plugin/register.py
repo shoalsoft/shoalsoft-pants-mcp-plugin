@@ -11,8 +11,8 @@
 # SOFTWARE.
 
 
-from shoalsoft.pants_modelcontext_plugin import goals
-from shoalsoft.pants_modelcontext_plugin.goals import McpGoal
+from shoalsoft.pants_mcp_plugin import goals
+from shoalsoft.pants_mcp_plugin.goals import McpGoal
 
 
 def auxiliary_goals():

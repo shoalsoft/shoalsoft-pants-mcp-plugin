@@ -137,7 +137,7 @@ async def setup_and_run_mcp_server(
     build_config: BuildConfiguration,
     options: Options,
 ) -> None:
-    server: Server = Server("shoalsoft-pants-modelcontext-plugin")
+    server: Server = Server("shoalsoft-pants-mcp-plugin")
 
     goal_name_to_goal_info = _determine_available_goals(
         graph_session=graph_session,

@@ -27,7 +27,7 @@ from pants.engine.rules import collect_rules
 from pants.goal.auxiliary_goal import AuxiliaryGoal, AuxiliaryGoalContext
 from pants.option.option_types import BoolOption
 from pants.option.options_bootstrapper import OptionsBootstrapper
-from shoalsoft.pants_modelcontext_plugin.mcp_server import setup_and_run_mcp_server
+from shoalsoft.pants_mcp_plugin.mcp_server import setup_and_run_mcp_server
 
 logger = logging.getLogger(__name__)
 

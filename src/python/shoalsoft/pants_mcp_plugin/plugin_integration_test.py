@@ -27,7 +27,7 @@ from packaging.version import Version
 
 from pants.testutil.python_interpreter_selection import python_interpreter_path
 from pants.util.dirutil import safe_file_dump
-from shoalsoft.pants_modelcontext_plugin.pants_integration_testutil import (
+from shoalsoft.pants_mcp_plugin.pants_integration_testutil import (
     PantsJoinHandle,
     PantsResult,
     PreparedPantsInvocation,
@@ -114,7 +114,7 @@ def isolated_pants(pants_version_str: str):
     plugin_pex_files = [
         name
         for name in os.listdir(Path.cwd())
-        if name.startswith(f"shoalsoft-pants-modelcontext-plugin-pants{pants_major_minor}")
+        if name.startswith(f"shoalsoft-pants-mcp-plugin-pants{pants_major_minor}")
         and name.endswith(".pex")
     ]
     assert (
@@ -153,7 +153,7 @@ def isolated_pants(pants_version_str: str):
         backend_packages = [
           "pants.backend.python",
           "pants.backend.shell",
-          "shoalsoft.pants_modelcontext_plugin",
+          "shoalsoft.pants_mcp_plugin",
         ]
         print_stacktrace = true
         pantsd = false
