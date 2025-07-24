@@ -32,7 +32,7 @@ from pants.engine.internals.selectors import Params
 async def setup_and_run_mcp_server(session: SchedulerSession, build_root: Path) -> None:
     server: Server = Server("shoalsoft-pants-modelcontext-plugin")
 
-    async def run_test_goal(pants_target_address: str) -> list[mcp_types.ContentBlock]:
+    async def run_test_goal(pants_target_address: str) -> dict[str, Any]:
         specs = SpecsParser(root_dir=str(build_root)).parse_specs(
             [pants_target_address], description_of_origin="MCP run_test_goal tool"
         )
@@ -50,15 +50,14 @@ async def setup_and_run_mcp_server(session: SchedulerSession, build_root: Path) 
             ),
         )
 
-        return [
-            mcp_types.TextContent(
-                type="text",
-                text=f"exit code: {exit_code}\nstdout from test:\n{stdout.getvalue()}\nstderr from test:\n{stderr.getvalue()}",
-            )
-        ]
+        return {
+            "exit_code": exit_code,
+            "stdout": stdout.getvalue(),
+            "stderr": stderr.getvalue(),
+        }
 
     @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any]) -> list[mcp_types.ContentBlock]:
+    async def call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         match name:
             case "pants-run-test-goal":
                 if "pants_target_address" not in arguments:
@@ -90,6 +89,24 @@ async def setup_and_run_mcp_server(session: SchedulerSession, build_root: Path) 
                             "description": "The address of the Pants target to invoke with the test goal ",
                         }
                     },
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "exit_code": {
+                            "type": "integer",
+                            "description": "The exit code returned by the Pants test goal",
+                        },
+                        "stdout": {
+                            "type": "string",
+                            "description": "Standard output captured from running the test goal",
+                        },
+                        "stderr": {
+                            "type": "string",
+                            "description": "Standard error output captured from running the test goal",
+                        },
+                    },
+                    "required": ["exit_code", "stdout", "stderr"],
                 },
             )
         ]
