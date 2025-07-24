@@ -188,7 +188,7 @@ def isolated_pants(pants_version_str: str):
 def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
         sources = {
-            "BUILD": """test_shell_command(name="test_tgt", command="echo xyzzy")\n""",
+            "BUILD": """test_shell_command(name="test_tgt", command="echo xyzzy ; exit 1")\n""",
         }
         _safe_write_files(context.buildroot, sources)
 
@@ -229,33 +229,29 @@ def test_mcp_server_tools(pants_version_str: str) -> None:
                                 test_tool_result, "structuredContent", {}
                             )
 
+                            exit_code = test_goal_result.get("exit_code")
                             assert (
-                                "exit_code" in test_goal_result
-                            ), "Expected exit_code field in structured output"
-                            assert (
-                                "stdout" in test_goal_result
-                            ), "Expected stdout field in structured output"
-                            assert (
-                                "stderr" in test_goal_result
-                            ), "Expected stderr field in structured output"
+                                exit_code is not None
+                            ), "Expected `exit_code` field in structured output"
+                            assert isinstance(exit_code, int), "Expected `exit_code` to be integer."
+                            assert exit_code == 1
 
-                            # Verify the types and values
-                            assert isinstance(
-                                test_goal_result["exit_code"], int
-                            ), "Expected exit_code to be integer"
-                            assert isinstance(
-                                test_goal_result["stdout"], str
-                            ), "Expected stdout to be string"
-                            assert isinstance(
-                                test_goal_result["stderr"], str
-                            ), "Expected stderr to be string"
+                            stdout = test_goal_result.get("stdout")
                             assert (
-                                test_goal_result["exit_code"] == 0
-                            ), "Expected successful exit code"
+                                stdout is not None
+                            ), "Expected `stdout` field in structured output"
+                            assert isinstance(stdout, str), "Expected `stdout` to be string."
+                            assert stdout == ""
+
+                            stderr = test_goal_result.get("stderr")
                             assert (
-                                "xyzzy" in test_goal_result["stdout"]
-                            ), "Expected test output in stdout"
+                                stderr is not None
+                            ), "Expected `stderr` field in structured output"
+                            assert isinstance(stderr, str), "Expected `stderr` to be string."
+                            assert "//:test_tgt failed" in stderr
                         except Exception as e:
+                            # This seems to be necessary with the asyncio since the exception is not
+                            # propagating back to pytest for some reason.
                             print(f"EXCEPTION: {e}")
                             raise
 
