@@ -75,33 +75,34 @@ def _setup_tools(goal_name_to_goal_info: dict[str, GoalHelpInfo]) -> list[mcp_ty
             "properties": {
                 "pants_target_address": {
                     "type": "string",
-                    "description": "The address of the Pants target to invoke with the test goal ",
+                    "description": f"The address of the Pants target to invoke with the `{goal_name}` goal ",
                 }
             },
+        }
+        output_schema = {
+            "type": "object",
+            "properties": {
+                "exit_code": {
+                    "type": "integer",
+                    "description": f"The exit code returned by the Pants `{goal_name}` goal",
+                },
+                "stdout": {
+                    "type": "string",
+                    "description": f"Standard output captured from running the Pants `{goal_name}` goal",
+                },
+                "stderr": {
+                    "type": "string",
+                    "description": f"Standard error output captured from running the Pants `{goal_name}` goal",
+                },
+            },
+            "required": ["exit_code", "stdout", "stderr"],
         }
         tool = mcp_types.Tool(
             name=f"pants-goal-{goal_name}",
             title=f"Run the Pants `{goal_name}` goal.",
             description=goal_info.description,
             inputSchema=input_schema,
-            outputSchema={
-                "type": "object",
-                "properties": {
-                    "exit_code": {
-                        "type": "integer",
-                        "description": "The exit code returned by the Pants test goal",
-                    },
-                    "stdout": {
-                        "type": "string",
-                        "description": "Standard output captured from running the test goal",
-                    },
-                    "stderr": {
-                        "type": "string",
-                        "description": "Standard error output captured from running the test goal",
-                    },
-                },
-                "required": ["exit_code", "stdout", "stderr"],
-            },
+            outputSchema=output_schema,
         )
         tools.append(tool)
 
