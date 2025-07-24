@@ -211,15 +211,28 @@ def test_mcp_server_tools(pants_version_str: str) -> None:
                     async with ClientSession(reader, writer) as session:
                         await session.initialize()
 
-                        list_tools_result = await session.list_tools()
-                        tools_by_name = {tool.name: tool for tool in list_tools_result.tools}
-
-                        test_tool = tools_by_name.get("pants-run-test-goal")
-                        assert (
-                            test_tool is not None
-                        ), "The `pants-run-test-goal` tool was not in the MCP tools list."
-
                         try:
+                            list_tools_result = await session.list_tools()
+                            tools_by_name = {tool.name: tool for tool in list_tools_result.tools}
+
+                            print(f"TOOLS: {','.join(tools_by_name.keys())}")
+                            # Ensure a known subset of tools were exposed.
+                            for goal_name in (
+                                "test",
+                                "package",
+                                "peek",
+                                "list",
+                            ):
+                                tool_name = f"pants-goal-{goal_name}"
+                                assert (
+                                    tool_name in tools_by_name
+                                ), f"Expected tool `{tool_name}` to be defined."
+
+                            test_tool = tools_by_name.get("pants-goal-test")
+                            assert (
+                                test_tool is not None
+                            ), "The `pants-goal-test` tool was not in the MCP tools list."
+
                             test_tool_result = await session.call_tool(
                                 name=test_tool.name,
                                 arguments={"pants_target_address": "//:test_tgt"},

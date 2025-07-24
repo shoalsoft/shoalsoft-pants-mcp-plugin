@@ -25,7 +25,6 @@ from pants.engine.goal import CurrentExecutingGoals
 from pants.engine.internals.session import SessionValues
 from pants.engine.rules import collect_rules
 from pants.goal.auxiliary_goal import AuxiliaryGoal, AuxiliaryGoalContext
-from pants.init.engine_initializer import GraphSession
 from pants.option.option_types import BoolOption
 from pants.option.options_bootstrapper import OptionsBootstrapper
 from shoalsoft.pants_modelcontext_plugin.mcp_server import setup_and_run_mcp_server
@@ -45,8 +44,8 @@ class McpGoal(AuxiliaryGoal):
         help="Internal option used to invoke the MCP server. DO NOT USE DIRECTLY!",
     )
 
-    def _run_server(self, graph_session: GraphSession) -> ExitCode:
-        scheduler_session = graph_session.scheduler_session.scheduler.new_session(
+    def _run_server(self, context: AuxiliaryGoalContext) -> ExitCode:
+        scheduler_session = context.graph_session.scheduler_session.scheduler.new_session(
             build_id="mcp",
             dynamic_ui=False,
             session_values=SessionValues(
@@ -63,7 +62,16 @@ class McpGoal(AuxiliaryGoal):
         try:
             sys.stdout = io.TextIOWrapper(os.fdopen(sys.stdout.fileno(), "wb", buffering=0))
             sys.stdin = io.TextIOWrapper(os.fdopen(sys.stdin.fileno(), "rb", buffering=0))
-            asyncio.run(setup_and_run_mcp_server(scheduler_session, build_root=Path.cwd()))
+            asyncio.run(
+                setup_and_run_mcp_server(
+                    graph_session=context.graph_session,
+                    session=scheduler_session,
+                    build_root=Path.cwd(),
+                    union_membership=context.union_membership,
+                    build_config=context.build_config,
+                    options=context.options,
+                )
+            )
         finally:
             sys.stdout = saved_stdout
             sys.stdin = saved_stdin
@@ -74,7 +82,7 @@ class McpGoal(AuxiliaryGoal):
         context: AuxiliaryGoalContext,
     ) -> ExitCode:
         if self.run_stdio_server:
-            return self._run_server(context.graph_session)
+            return self._run_server(context)
 
         sys.stderr.write("TODO: Easy setup coming soon to this MCP near you!\n")
         return ExitCode(0)
