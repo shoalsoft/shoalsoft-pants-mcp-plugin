@@ -150,6 +150,8 @@ async def setup_and_run_mcp_server(
     goal_map = _setup_goal_map_from_rules(build_config.rules)
 
     async def run_goal(goal_name: str, pants_target_address: str) -> dict[str, Any]:
+        env_name = determine_bootstrap_environment(session)
+
         goal_product = goal_map.get(goal_name)
         if goal_product is None:
             raise ValueError(f"Unknown goal: {goal_name}")
@@ -168,6 +170,7 @@ async def setup_and_run_mcp_server(
                 specs,
                 console,
                 Workspace(session),
+                env_name,
             ),
         )
 
