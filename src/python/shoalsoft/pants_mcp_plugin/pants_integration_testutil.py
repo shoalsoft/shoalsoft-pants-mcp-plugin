@@ -15,6 +15,8 @@
 # NOTE: Vendored from Pants sources to add `chdir` parameter.
 # Non-upstreamed changes are:
 #   Copyright (C) 2025 Shoal Software LLC. All rights reserved.
+#
+# See the included LICENSE file for further specific terms and conditions.
 
 from __future__ import annotations
 
