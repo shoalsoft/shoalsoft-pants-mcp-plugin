@@ -1,6 +1,7 @@
 # Copyright (C) 2025 Shoal Software LLC. All rights reserved.
 #
 # This is commercial software and cannot be used without prior permission.
+# See the included LICENSE file for further specific terms and conditions.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
