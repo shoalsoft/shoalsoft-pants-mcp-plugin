@@ -224,7 +224,7 @@ def prepare_pants_invocation(
             if value is not None:
                 env[h] = value
 
-    env.update(NO_SCIE_WARNING="1", PEX_VENV="true")
+    env.update({"NO_SCIE_WARNING": "1", "PEX_VENV": "true"})
 
     if extra_env:
         env.update(cast(dict[Union[str, bytes], Union[str, bytes]], extra_env))

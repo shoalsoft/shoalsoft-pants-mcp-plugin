@@ -12,13 +12,13 @@
 
 PLUGIN_VERSION = "0.1.0.dev0"
 
-PANTS_MAJOR_MINOR_VERSIONS = ["2.27"]
+PANTS_MAJOR_MINOR_VERSIONS = ["2.29"]
 
 python_sources(
     sources=["*.py", "!*_test.py", "!*_integration_test.py"],
     **parametrize(
-        "pants-2.27",
-        resolve="pants-2.27",
+        "pants-2.29",
+        resolve="pants-2.29",
     ),
 )
 
@@ -43,10 +43,10 @@ pex_binary(
     execution_mode="venv",
     layout="zipapp",
     **parametrize(
-        "pants-2.27",
-        resolve="pants-2.27",
-        dependencies=["3rdparty/python:pants-2.27#pantsbuild.pants"],
-        output_path="pants-2.27.pex",
+        "pants-2.29",
+        resolve="pants-2.29",
+        dependencies=["3rdparty/python:pants-2.29#pantsbuild.pants"],
+        output_path="pants-2.29.pex",
     ),
 )
 

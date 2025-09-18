@@ -184,7 +184,7 @@ def isolated_pants(pants_version_str: str):
     yield isolated_pants_test_context
 
 
-@pytest.mark.parametrize("pants_version_str", ["2.27.0"])
+@pytest.mark.parametrize("pants_version_str", ["2.29.0a0"])
 def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
         sources = {
