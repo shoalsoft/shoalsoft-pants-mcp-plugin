@@ -208,10 +208,17 @@ async def setup_and_run_mcp_server(
     async def get_pants_target_resources() -> list[mcp_types.Resource]:
         result = session.product_request(AllTargets, [Params()])
         targets: AllTargets = result[0]
+
+        def abs_spec(spec: str) -> str:
+            """Make sure the specs is absolute so its URL form is parsed correctly."""
+            if not spec.startswith("//"):
+                return "//" + spec
+            return spec
+
         return [
             mcp_types.Resource(
                 name=tgt.address.target_name,
-                uri=AnyUrl(f"{_PANTS_TARGET_ADDR_SCHEME}://{tgt.address}"),
+                uri=AnyUrl(f"{_PANTS_TARGET_ADDR_SCHEME}://{abs_spec(str(tgt.address))}"),
                 mimeType="text/json",
                 description="A JSON document representing the metadata of this Pants target",
             )
