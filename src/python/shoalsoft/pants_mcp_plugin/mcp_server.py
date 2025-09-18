@@ -51,7 +51,7 @@ from pants.init.engine_initializer import GraphSession
 from pants.option.options import Options
 from pants.option.options_bootstrapper import OptionsBootstrapper
 
-_PANTS_TARGET_ADDR_SCHEME = "pants-target-addr"
+_PANTS_TARGET_ADDR_SCHEME = "pants-target"
 
 
 def _determine_available_goals(
@@ -210,7 +210,8 @@ async def setup_and_run_mcp_server(
         targets: AllTargets = result[0]
 
         def abs_spec(spec: str) -> str:
-            """Make sure the specs is absolute so its URL form is parsed correctly."""
+            """Make sure the specs is absolute so its URL form is parsed
+            correctly."""
             if not spec.startswith("//"):
                 return "//" + spec
             return spec

@@ -240,7 +240,7 @@ async def _test_resources(session: ClientSession) -> None:
         ), f"Expected a resource for Pants target `{expected_tgt_spec}`"
 
     async def get_pants_target_resource(spec: str) -> dict[str, typing.Any]:
-        resource_result = await session.read_resource(AnyUrl(f"pants-target-addr://{spec}"))
+        resource_result = await session.read_resource(AnyUrl(f"pants-target://{spec}"))
         contents = resource_result.contents
         assert (
             len(contents) == 1
