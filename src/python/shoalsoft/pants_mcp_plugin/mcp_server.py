@@ -23,6 +23,7 @@ from typing import Any
 
 from mcp import types as mcp_types
 from mcp.server.lowlevel import Server
+from mcp.server.lowlevel.helper_types import ReadResourceContents
 from mcp.server.stdio import stdio_server
 from pydantic.networks import AnyUrl
 
@@ -262,7 +263,7 @@ async def setup_and_run_mcp_server(
         )
         return typing.cast(Addresses, results[0])
 
-    async def read_pants_target_resource(url: AnyUrl) -> str:
+    async def read_pants_target_resource(url: AnyUrl) -> Iterable[ReadResourceContents]:
         spec = url.path
         assert spec is not None, "MCP URL must not be empty."
         addresses = resolve_specs_to_addresses([spec])
@@ -276,15 +277,20 @@ async def setup_and_run_mcp_server(
             [WrappedTargetRequest(addresses[0], description_of_origin="MCP server")],
         )
         target = results[0].target
-        return json.dumps(
-            {
-                "alias": target.alias,
-                "address": str(target.address),
-            }
-        )
+        return [
+            ReadResourceContents(
+                content=json.dumps(
+                    {
+                        "alias": target.alias,
+                        "address": str(target.address),
+                    }
+                ),
+                mime_type="text/json",
+            )
+        ]
 
     @server.read_resource()
-    async def read_resource(url: AnyUrl) -> str:
+    async def read_resource(url: AnyUrl) -> str | bytes | Iterable[ReadResourceContents]:
         if url.scheme == _PANTS_TARGET_ADDR_SCHEME:
             return await read_pants_target_resource(url)
 
