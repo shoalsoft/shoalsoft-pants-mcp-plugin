@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import io
 import json
+import typing
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
@@ -25,21 +26,22 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 from pydantic.networks import AnyUrl
 
+from pants.base.specs import Specs
 from pants.base.specs_parser import SpecsParser
 from pants.build_graph.build_configuration import BuildConfiguration
 from pants.core.environments.rules import determine_bootstrap_environment
-from pants.engine.addresses import Address
+from pants.engine.addresses import Addresses
 from pants.engine.console import Console
+from pants.engine.environment import EnvironmentName
 from pants.engine.fs import Workspace
 from pants.engine.goal import Goal
 from pants.engine.internals.parser import BuildFileSymbolsInfo
 from pants.engine.internals.scheduler import SchedulerSession
 from pants.engine.internals.selectors import Params
-from pants.engine.rules import Rule
+from pants.engine.rules import QueryRule, Rule
 from pants.engine.target import (
+    AllTargets,
     RegisteredTargetTypes,
-    Target,
-    Targets,
     WrappedTarget,
     WrappedTargetRequest,
 )
@@ -47,6 +49,7 @@ from pants.engine.unions import UnionMembership
 from pants.help.help_info_extracter import GoalHelpInfo, HelpInfoExtracter
 from pants.init.engine_initializer import GraphSession
 from pants.option.options import Options
+from pants.option.options_bootstrapper import OptionsBootstrapper
 
 _PANTS_TARGET_ADDR_SCHEME = "pants-target-addr"
 
@@ -140,6 +143,14 @@ def _setup_goal_map_from_rules(rules: Iterable[Rule]) -> Mapping[str, type[Goal]
     return goal_map
 
 
+def get_query_rules() -> Iterable[QueryRule]:
+    return [
+        QueryRule(AllTargets, ()),
+        QueryRule(Addresses, (Specs, OptionsBootstrapper, EnvironmentName)),
+        QueryRule(WrappedTarget, (WrappedTargetRequest,)),
+    ]
+
+
 async def setup_and_run_mcp_server(
     *,
     graph_session: GraphSession,
@@ -195,14 +206,14 @@ async def setup_and_run_mcp_server(
         }
 
     async def get_pants_target_resources() -> list[mcp_types.Resource]:
-        targets = session.product_request(Targets, ())
+        result = session.product_request(AllTargets, [Params()])
+        targets: AllTargets = result[0]
         return [
             mcp_types.Resource(
-                name=tgt.address.name,
-                uri=AnyUrl(
-                    f"{_PANTS_TARGET_ADDR_SCHEME}://{tgt.address.spec_path}/:{tgt.address.name}"
-                ),
+                name=tgt.address.target_name,
+                uri=AnyUrl(f"{_PANTS_TARGET_ADDR_SCHEME}://{tgt.address}"),
                 mimeType="text/json",
+                description="A JSON document representing the metadata of this Pants target",
             )
             for tgt in targets
         ]
@@ -232,32 +243,35 @@ async def setup_and_run_mcp_server(
         target_resources = await get_pants_target_resources()
         return target_resources
 
+    def resolve_specs_to_addresses(raw_specs: Iterable[str]) -> Addresses:
+        specs = SpecsParser(root_dir=str(build_root)).parse_specs(
+            specs=raw_specs, description_of_origin=""
+        )
+        options_bootstrapper = session.py_session.session_values[OptionsBootstrapper]
+        env_name = determine_bootstrap_environment(session)
+        results = session.product_request(
+            Addresses, [Params(specs, options_bootstrapper, env_name)]
+        )
+        return typing.cast(Addresses, results[0])
+
     async def read_pants_target_resource(url: AnyUrl) -> str:
-        path_parts = (url.path or "").split("/")
-        if len(path_parts) >= 1 and not path_parts[-1]:
-            path_parts.pop()
-        if not path_parts:
-            raise ValueError(f"Unknown Pants target: {url}")
+        spec = url.path
+        assert spec is not None, "MCP URL must not be empty."
+        addresses = resolve_specs_to_addresses([spec])
+        if not addresses:
+            raise ValueError(f"No Pants target found for `{spec}`")
+        if len(addresses) != 1:
+            raise ValueError(f"Multiple Pants targets matched spec `{spec}`.")
 
-        spec_path: str
-        target_name: str
-        if path_parts[-1].startswith(":"):
-            spec_path = "/".join(path_parts[0:-1])
-            target_name = path_parts[-1][1:]
-        else:
-            spec_path = "/".join(path_parts)
-            target_name = path_parts[-1]
-
-        address = Address(spec_path=spec_path, target_name=target_name)
         results = session.product_request(
             WrappedTarget,
-            [WrappedTargetRequest(address, description_of_origin="MCP server")],
+            [WrappedTargetRequest(addresses[0], description_of_origin="MCP server")],
         )
-        target: Target = results[0].target
+        target = results[0].target
         return json.dumps(
             {
                 "alias": target.alias,
-                "pants-target-addr": str(target.address),
+                "address": str(target.address),
             }
         )
 

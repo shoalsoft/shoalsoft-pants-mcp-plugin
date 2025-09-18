@@ -12,10 +12,12 @@
 # SOFTWARE.
 
 import asyncio
+import json
 import os
 import subprocess
 import tempfile
 import textwrap
+import typing
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
@@ -23,8 +25,10 @@ from typing import Any, Generator
 
 import pytest
 from mcp import ClientSession
+from mcp import types as mcp_types
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from packaging.version import Version
+from pydantic.networks import AnyUrl
 
 from pants.testutil.python_interpreter_selection import python_interpreter_path
 from pants.util.dirutil import safe_file_dump
@@ -226,6 +230,38 @@ async def _test_tools(session: ClientSession) -> None:
     assert "//:test_tgt failed" in stderr
 
 
+async def _test_resources(session: ClientSession) -> None:
+    resources_result = await session.list_resources()
+    resources = {resource.uri.path: resource for resource in resources_result.resources}
+    assert resources, "MCP server should have returned resources."
+    for expected_tgt_spec in ("//:test_tgt",):
+        assert (
+            "//:test_tgt" in resources
+        ), f"Expected a resource for Pants target `{expected_tgt_spec}`"
+
+    async def get_pants_target_resource(spec: str) -> dict[str, typing.Any]:
+        resource_result = await session.read_resource(AnyUrl(f"pants-target-addr://{spec}"))
+        contents = resource_result.contents
+        assert (
+            len(contents) == 1
+        ), f"Expected a single contents component for resource for spec `{spec}`."
+        content_part = contents[0]
+        assert isinstance(
+            content_part, mcp_types.TextResourceContents
+        ), f"Expected a TextResourceContents for resource for spec `{spec}`."
+        data: dict[str, typing.Any] = json.loads(content_part.text)
+        return data
+
+    for spec in resources.keys():
+        assert spec is not None
+        target_json = await get_pants_target_resource(spec)
+        assert target_json["address"] == spec
+
+    test_tgt = await get_pants_target_resource("//:test_tgt")
+    assert test_tgt["alias"] == "test_shell_command"
+    assert test_tgt["address"] == "//:test_tgt"
+
+
 @pytest.mark.parametrize("pants_version_str", ["2.29.0a0"])
 def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
@@ -255,6 +291,7 @@ def test_mcp_server_tools(pants_version_str: str) -> None:
 
                         try:
                             await _test_tools(session)
+                            await _test_resources(session)
                         except Exception as e:
                             # This seems to be necessary with the asyncio since the exception is not
                             # propagating back to pytest for some reason.
