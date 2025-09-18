@@ -185,6 +185,47 @@ def isolated_pants(pants_version_str: str):
     yield isolated_pants_test_context
 
 
+async def _test_tools(session: ClientSession) -> None:
+    list_tools_result = await session.list_tools()
+    tools_by_name = {tool.name: tool for tool in list_tools_result.tools}
+
+    print(f"TOOLS: {','.join(tools_by_name.keys())}")
+    # Ensure a known subset of tools were exposed.
+    for goal_name in (
+        "test",
+        "package",
+        "peek",
+        "list",
+    ):
+        tool_name = f"pants-goal-{goal_name}"
+        assert tool_name in tools_by_name, f"Expected tool `{tool_name}` to be defined."
+
+    test_tool = tools_by_name.get("pants-goal-test")
+    assert test_tool is not None, "The `pants-goal-test` tool was not in the MCP tools list."
+
+    test_tool_result = await session.call_tool(
+        name=test_tool.name,
+        arguments={"pants_target_address": "//:test_tgt"},
+    )
+
+    test_goal_result: dict[str, Any] = getattr(test_tool_result, "structuredContent", {})
+
+    exit_code = test_goal_result.get("exit_code")
+    assert exit_code is not None, "Expected `exit_code` field in structured output"
+    assert isinstance(exit_code, int), "Expected `exit_code` to be integer."
+    assert exit_code == 1
+
+    stdout = test_goal_result.get("stdout")
+    assert stdout is not None, "Expected `stdout` field in structured output"
+    assert isinstance(stdout, str), "Expected `stdout` to be string."
+    assert stdout == ""
+
+    stderr = test_goal_result.get("stderr")
+    assert stderr is not None, "Expected `stderr` field in structured output"
+    assert isinstance(stderr, str), "Expected `stderr` to be string."
+    assert "//:test_tgt failed" in stderr
+
+
 @pytest.mark.parametrize("pants_version_str", ["2.29.0a0"])
 def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
@@ -213,56 +254,7 @@ def test_mcp_server_tools(pants_version_str: str) -> None:
                         await session.initialize()
 
                         try:
-                            list_tools_result = await session.list_tools()
-                            tools_by_name = {tool.name: tool for tool in list_tools_result.tools}
-
-                            print(f"TOOLS: {','.join(tools_by_name.keys())}")
-                            # Ensure a known subset of tools were exposed.
-                            for goal_name in (
-                                "test",
-                                "package",
-                                "peek",
-                                "list",
-                            ):
-                                tool_name = f"pants-goal-{goal_name}"
-                                assert (
-                                    tool_name in tools_by_name
-                                ), f"Expected tool `{tool_name}` to be defined."
-
-                            test_tool = tools_by_name.get("pants-goal-test")
-                            assert (
-                                test_tool is not None
-                            ), "The `pants-goal-test` tool was not in the MCP tools list."
-
-                            test_tool_result = await session.call_tool(
-                                name=test_tool.name,
-                                arguments={"pants_target_address": "//:test_tgt"},
-                            )
-
-                            test_goal_result: dict[str, Any] = getattr(
-                                test_tool_result, "structuredContent", {}
-                            )
-
-                            exit_code = test_goal_result.get("exit_code")
-                            assert (
-                                exit_code is not None
-                            ), "Expected `exit_code` field in structured output"
-                            assert isinstance(exit_code, int), "Expected `exit_code` to be integer."
-                            assert exit_code == 1
-
-                            stdout = test_goal_result.get("stdout")
-                            assert (
-                                stdout is not None
-                            ), "Expected `stdout` field in structured output"
-                            assert isinstance(stdout, str), "Expected `stdout` to be string."
-                            assert stdout == ""
-
-                            stderr = test_goal_result.get("stderr")
-                            assert (
-                                stderr is not None
-                            ), "Expected `stderr` field in structured output"
-                            assert isinstance(stderr, str), "Expected `stderr` to be string."
-                            assert "//:test_tgt failed" in stderr
+                            await _test_tools(session)
                         except Exception as e:
                             # This seems to be necessary with the asyncio since the exception is not
                             # propagating back to pytest for some reason.
