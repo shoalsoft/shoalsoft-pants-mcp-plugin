@@ -4,6 +4,7 @@ pantsbuild.pants.testutil==2.29.0a0
 # MCP dependencies
 mcp[cli]==1.14.0
 anyio
+pydantic
 
 # Test dependencies
 pytest>=6.2.4,<7.1.0
