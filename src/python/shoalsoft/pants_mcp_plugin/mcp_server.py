@@ -15,29 +15,44 @@
 from __future__ import annotations
 
 import io
+import json
+import typing
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
 from mcp import types as mcp_types
 from mcp.server.lowlevel import Server
+from mcp.server.lowlevel.helper_types import ReadResourceContents
 from mcp.server.stdio import stdio_server
+from pydantic.networks import AnyUrl
 
+from pants.base.specs import Specs
 from pants.base.specs_parser import SpecsParser
 from pants.build_graph.build_configuration import BuildConfiguration
 from pants.core.environments.rules import determine_bootstrap_environment
+from pants.engine.addresses import Addresses
 from pants.engine.console import Console
+from pants.engine.environment import EnvironmentName
 from pants.engine.fs import Workspace
 from pants.engine.goal import Goal
 from pants.engine.internals.parser import BuildFileSymbolsInfo
 from pants.engine.internals.scheduler import SchedulerSession
 from pants.engine.internals.selectors import Params
-from pants.engine.rules import Rule
-from pants.engine.target import RegisteredTargetTypes
+from pants.engine.rules import QueryRule, Rule
+from pants.engine.target import (
+    AllTargets,
+    RegisteredTargetTypes,
+    WrappedTarget,
+    WrappedTargetRequest,
+)
 from pants.engine.unions import UnionMembership
 from pants.help.help_info_extracter import GoalHelpInfo, HelpInfoExtracter
 from pants.init.engine_initializer import GraphSession
 from pants.option.options import Options
+from pants.option.options_bootstrapper import OptionsBootstrapper
+
+_PANTS_TARGET_ADDR_SCHEME = "pants-target"
 
 
 def _determine_available_goals(
@@ -129,6 +144,14 @@ def _setup_goal_map_from_rules(rules: Iterable[Rule]) -> Mapping[str, type[Goal]
     return goal_map
 
 
+def get_query_rules() -> Iterable[QueryRule]:
+    return [
+        QueryRule(AllTargets, ()),
+        QueryRule(Addresses, (Specs, OptionsBootstrapper, EnvironmentName)),
+        QueryRule(WrappedTarget, (WrappedTargetRequest,)),
+    ]
+
+
 async def setup_and_run_mcp_server(
     *,
     graph_session: GraphSession,
@@ -183,6 +206,27 @@ async def setup_and_run_mcp_server(
             "stderr": stderr.getvalue(),
         }
 
+    async def get_pants_target_resources() -> list[mcp_types.Resource]:
+        result = session.product_request(AllTargets, [Params()])
+        targets: AllTargets = result[0]
+
+        def abs_spec(spec: str) -> str:
+            """Make sure the spec is absolute so its URL form is parsed
+            correctly."""
+            if not spec.startswith("//"):
+                return "//" + spec
+            return spec
+
+        return [
+            mcp_types.Resource(
+                name=tgt.address.target_name,
+                uri=AnyUrl(f"{_PANTS_TARGET_ADDR_SCHEME}://{abs_spec(str(tgt.address))}"),
+                mimeType="text/json",
+                description="A JSON document representing the metadata of this Pants target",
+            )
+            for tgt in targets
+        ]
+
     @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if name not in tools_by_name:
@@ -202,6 +246,55 @@ async def setup_and_run_mcp_server(
     @server.list_tools()
     async def list_tools() -> list[mcp_types.Tool]:
         return tools
+
+    @server.list_resources()
+    async def list_resources() -> list[mcp_types.Resource]:
+        target_resources = await get_pants_target_resources()
+        return target_resources
+
+    def resolve_specs_to_addresses(raw_specs: Iterable[str]) -> Addresses:
+        specs = SpecsParser(root_dir=str(build_root)).parse_specs(
+            specs=raw_specs, description_of_origin=""
+        )
+        options_bootstrapper = session.py_session.session_values[OptionsBootstrapper]
+        env_name = determine_bootstrap_environment(session)
+        results = session.product_request(
+            Addresses, [Params(specs, options_bootstrapper, env_name)]
+        )
+        return typing.cast(Addresses, results[0])
+
+    async def read_pants_target_resource(url: AnyUrl) -> Iterable[ReadResourceContents]:
+        spec = url.path
+        assert spec is not None, "MCP URL must not be empty."
+        addresses = resolve_specs_to_addresses([spec])
+        if not addresses:
+            raise ValueError(f"No Pants target found for `{spec}`")
+        if len(addresses) != 1:
+            raise ValueError(f"Multiple Pants targets matched spec `{spec}`.")
+
+        results = session.product_request(
+            WrappedTarget,
+            [WrappedTargetRequest(addresses[0], description_of_origin="MCP server")],
+        )
+        target = results[0].target
+        return [
+            ReadResourceContents(
+                content=json.dumps(
+                    {
+                        "alias": target.alias,
+                        "address": str(target.address),
+                    }
+                ),
+                mime_type="text/json",
+            )
+        ]
+
+    @server.read_resource()
+    async def read_resource(url: AnyUrl) -> str | bytes | Iterable[ReadResourceContents]:
+        if url.scheme == _PANTS_TARGET_ADDR_SCHEME:
+            return await read_pants_target_resource(url)
+
+        raise ValueError(f"Unknown resource: {url}")
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
