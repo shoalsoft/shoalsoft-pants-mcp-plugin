@@ -211,7 +211,7 @@ async def setup_and_run_mcp_server(
         targets: AllTargets = result[0]
 
         def abs_spec(spec: str) -> str:
-            """Make sure the specs is absolute so its URL form is parsed
+            """Make sure the spec is absolute so its URL form is parsed
             correctly."""
             if not spec.startswith("//"):
                 return "//" + spec
