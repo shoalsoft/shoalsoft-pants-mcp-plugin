@@ -24,7 +24,7 @@ from mcp.server.stdio import stdio_server
 
 from pants.base.specs_parser import SpecsParser
 from pants.build_graph.build_configuration import BuildConfiguration
-from pants.core.util_rules.environments import determine_bootstrap_environment
+from pants.core.environments.rules import determine_bootstrap_environment
 from pants.engine.console import Console
 from pants.engine.fs import Workspace
 from pants.engine.goal import Goal

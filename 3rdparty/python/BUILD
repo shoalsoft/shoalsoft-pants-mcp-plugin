@@ -12,9 +12,9 @@
 
 
 python_requirements(
-    name="pants-2.27",
-    source="pants-2.27.txt",
-    resolve="pants-2.27",
+    name="pants-2.29",
+    source="pants-2.29.txt",
+    resolve="pants-2.29",
     module_mapping={
         "pantsbuild.pants": ["pants"],
         "pantsbuild.pants.testutil": ["pants.testutil"],

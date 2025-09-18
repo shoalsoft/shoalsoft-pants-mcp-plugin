@@ -1,8 +1,8 @@
-pantsbuild.pants==2.27.0
-pantsbuild.pants.testutil==2.27.0
+pantsbuild.pants==2.29.0a0
+pantsbuild.pants.testutil==2.29.0a0
 
 # MCP dependencies
-mcp[cli]==1.11.0
+mcp[cli]==1.14.0
 anyio
 
 # Test dependencies

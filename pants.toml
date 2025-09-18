@@ -1,5 +1,5 @@
 [GLOBAL]
-pants_version = "2.27.0"
+pants_version = "2.29.0a0"
 backend_packages.add = [
   "pants.backend.build_files.fmt.black",
   "pants.backend.plugin_development",
@@ -15,10 +15,10 @@ backend_packages.add = [
 interpreter_constraints = ["==3.11.*"]
 enable_resolves = true
 pip_version = "latest"
-default_resolve = "pants-2.27"
+default_resolve = "pants-2.29"
 
 [python.resolves]
-"pants-2.27" = "3rdparty/python/pants-2.27.lock"
+"pants-2.29" = "3rdparty/python/pants-2.29.lock"
 pytest = "3rdparty/python/pytest.lock"
 mypy = "3rdparty/python/mypy.lock"
 
@@ -37,12 +37,12 @@ install_from_resolve = "pytest"
 requirements = ["//3rdparty/python:pytest"]
 
 [pex-cli]
-version = "v2.45.2"
+version = "v2.57.0"
 known_versions = [
-  "v2.45.2|macos_arm64|570a3d5ca306a39aa3a180bd4cf3e2661b7c74b0579422b34659246daf122384|4833957",
-  "v2.45.2|macos_x86_64|570a3d5ca306a39aa3a180bd4cf3e2661b7c74b0579422b34659246daf122384|4833957",
-  "v2.45.2|linux_arm64|570a3d5ca306a39aa3a180bd4cf3e2661b7c74b0579422b34659246daf122384|4833957",
-  "v2.45.2|linux_x86_64|570a3d5ca306a39aa3a180bd4cf3e2661b7c74b0579422b34659246daf122384|4833957",
+  "v2.57.0|macos_arm64|82956c5fa92ee382a6eec4ea4be7a007eaef4fcfb52a166460e7d8244996aebd|4797155",
+  "v2.57.0|macos_x86_64|82956c5fa92ee382a6eec4ea4be7a007eaef4fcfb52a166460e7d8244996aebd|4797155",
+  "v2.57.0|linux_arm64|82956c5fa92ee382a6eec4ea4be7a007eaef4fcfb52a166460e7d8244996aebd|4797155",
+  "v2.57.0|linux_x86_64|82956c5fa92ee382a6eec4ea4be7a007eaef4fcfb52a166460e7d8244996aebd|4797155",
 ]
 
 [flake8]
