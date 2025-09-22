@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is an **experimental** plugin to the [Pantsbuild](https://pantsbuild.org/) build orchestration tool to expose a Model Contect Protocol ("MCP") server for LLM coding agents to interact with.
+This project is an **experimental** plugin to the [Pantsbuild](https://pantsbuild.org/) build orchestration tool to expose a Model Context Protocol ("MCP") server for LLM coding agents to interact with.
 
 ## Installation
 
@@ -12,8 +12,9 @@ From PyPI:
 
 2. Confogure your LLM coding agent to invoke `pants shoalsoft-mcp --run-stdio-server` in the repository as follows:
 
-  - [Claude Code setup](https://docs.claude.com/en/docs/claude-code/mcp#option-1%3A-add-a-local-stdio-server)
-  - [ChatGPT Codex setup](https://github.com/openai/codex/blob/main/docs/advanced.md#model-context-protocol-mcp)
+  - [Claude Code MCP setup](https://docs.claude.com/en/docs/claude-code/mcp#option-1%3A-add-a-local-stdio-server)
+  - [OpenAI Codex MCP setup](https://github.com/openai/codex/blob/main/docs/advanced.md#model-context-protocol-mcp)
+  - [Cursor MCP setup](https://cursor.com/docs/context/mcp)
 
 ## Usage
 
