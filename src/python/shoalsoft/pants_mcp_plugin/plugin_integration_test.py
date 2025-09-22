@@ -275,7 +275,7 @@ async def _test_resources(session: ClientSession) -> None:
     assert test_tgt["address"] == "//:test_tgt"
 
 
-@pytest.mark.parametrize("pants_version_str", ("2.29",))
+@pytest.mark.parametrize("pants_version_str", ("2.29", "2.28", "2.27"))
 def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
         sources = {
