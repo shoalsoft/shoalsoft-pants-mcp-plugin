@@ -27,10 +27,8 @@ If the MCP server is started correctly by your LLM coding agent, then the agent 
 
 - Run tests: `pants test ::`
 
-### Building
-
-TBD
-
 ## License
 
 This is currently commercial software and requires prior permission to use. See the [LICENSE](./LICENSE) file in this repository for specific details.
+
+Permission is granted for personal, non-commercial use and for commercial evaluation, but not regular commercial use (which includes using the project for software development workflows in a commercial setting) without explicit permission.
