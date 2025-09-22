@@ -99,13 +99,15 @@ class IsolatedPantsTestContext:
 
 
 @contextmanager
-def isolated_pants(pants_version_str: str):
-    pants_version = Version(pants_version_str)
-    pants_major_minor = f"{pants_version.major}.{pants_version.minor}"
+def isolated_pants(pants_major_minor: str):
+    pants_major_minor_version = Version(pants_major_minor)
+    assert (
+        len(pants_major_minor_version.release) == 2
+    ), "Expected only major/minor version to be provided."
 
     # Find the Python interpreter compatible with this version of Pants.
     py_version_for_pants_major_minor = (
-        "3.11" if Version(pants_major_minor) >= Version("2.25") else "3.9"
+        "3.11" if pants_major_minor_version >= Version("2.25") else "3.9"
     )
     python_path = python_interpreter_path(py_version_for_pants_major_minor)
     assert (
@@ -141,6 +143,17 @@ def isolated_pants(pants_version_str: str):
 
     buildroot = (Path.cwd() / f"buildroot-{pants_major_minor}").resolve()
     buildroot.mkdir(parents=True)
+    (buildroot / "BUILDROOT").touch()
+
+    # Determine the full version of the Pants used for the test.
+    version_result = subprocess.run(
+        [python_path, str(pants_pex_path), "--version"],
+        env={"NO_SCIE_WARNING": "1"},
+        capture_output=True,
+        check=True,
+        cwd=buildroot,
+    )
+    pants_version = Version(version_result.stdout.decode("utf-8").strip())
 
     workdir_base = buildroot / ".pants.d" / "workdirs"
     workdir_base.mkdir(parents=True)
@@ -262,7 +275,7 @@ async def _test_resources(session: ClientSession) -> None:
     assert test_tgt["address"] == "//:test_tgt"
 
 
-@pytest.mark.parametrize("pants_version_str", ["2.29.0a0"])
+@pytest.mark.parametrize("pants_version_str", ("2.29",))
 def test_mcp_server_tools(pants_version_str: str) -> None:
     with isolated_pants(pants_version_str) as context:
         sources = {
