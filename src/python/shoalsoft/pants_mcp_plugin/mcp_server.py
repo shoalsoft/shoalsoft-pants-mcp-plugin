@@ -30,7 +30,6 @@ from pydantic.networks import AnyUrl
 from pants.base.specs import Specs
 from pants.base.specs_parser import SpecsParser
 from pants.build_graph.build_configuration import BuildConfiguration
-from pants.core.environments.rules import determine_bootstrap_environment
 from pants.engine.addresses import Addresses
 from pants.engine.console import Console
 from pants.engine.environment import EnvironmentName
@@ -51,6 +50,16 @@ from pants.help.help_info_extracter import GoalHelpInfo, HelpInfoExtracter
 from pants.init.engine_initializer import GraphSession
 from pants.option.options import Options
 from pants.option.options_bootstrapper import OptionsBootstrapper
+
+try:
+    from pants.core.environments.rules import (  # type: ignore[import-not-found, unused-ignore]
+        determine_bootstrap_environment,
+    )
+except ImportError:
+    from pants.core.util_rules.environments import (  # type: ignore[import-not-found, no-redef, unused-ignore]
+        determine_bootstrap_environment,
+    )
+
 
 _PANTS_TARGET_ADDR_SCHEME = "pants-target"
 

@@ -10,11 +10,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
 python_requirements(
     name="pants-2.29",
     source="pants-2.29.txt",
     resolve="pants-2.29",
+    module_mapping={
+        "pantsbuild.pants": ["pants"],
+        "pantsbuild.pants.testutil": ["pants.testutil"],
+    },
+)
+
+python_requirements(
+    name="pants-2.28",
+    source="pants-2.28.txt",
+    resolve="pants-2.28",
+    module_mapping={
+        "pantsbuild.pants": ["pants"],
+        "pantsbuild.pants.testutil": ["pants.testutil"],
+    },
+)
+
+python_requirements(
+    name="pants-2.27",
+    source="pants-2.27.txt",
+    resolve="pants-2.27",
     module_mapping={
         "pantsbuild.pants": ["pants"],
         "pantsbuild.pants.testutil": ["pants.testutil"],
