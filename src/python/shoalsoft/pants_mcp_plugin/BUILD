@@ -106,6 +106,12 @@ From PyPI:
 
   - [Claude Code setup](https://docs.claude.com/en/docs/claude-code/mcp#option-1%3A-add-a-local-stdio-server)
   - [ChatGPT Codex setup](https://github.com/openai/codex/blob/main/docs/advanced.md#model-context-protocol-mcp)
+
+## Licensing
+
+This project is commercial software subject [to a license](https://github.com/shoalsoft/shoalsoft-pants-mcp-plugin/blob/main/LICENSE).
+
+Permission is granted for personal, non-commercial use and for commercial evaluation, but not regular commercial use (which includes using the project for software development workflows in a commercial setting) without explicit permission.
 """
 
 # Add a single wheel which is not specific to any particular Pants version.
